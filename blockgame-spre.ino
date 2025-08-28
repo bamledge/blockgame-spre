@@ -26,7 +26,7 @@ bool measStarted, measEnded, initialized;
 const unsigned long TAP_GUARD_TIME_MS = 250;
 int currentPlayer;
 
-const int colorTable[8] = {TFT_WHITE, TFT_YELLOW, TFT_BLUE, TFT_GREEN, TFT_RED, TFT_CYAN, TFT_MAGENTA, TFT_ORANGE};
+const int colorTable[8] = {TFT_WHITE, TFT_YELLOW, TFT_BLUE, TFT_GREEN, TFT_RED, TFT_CYAN, TFT_MAGENTA, TFT_BROWN};
 int playerColorIdx[2] = {0, 4};
 int playerColor[2];
 bool placed[2][GRID_X][GRID_Y];
@@ -90,6 +90,19 @@ int seekY(int xidx) {
   }
   return availableY;
 }
+
+void highlightCurrentPlayer() {
+  if (currentPlayer == 0) {
+    spr.drawRoundRect(240, 221, 80, 19, 4, TFT_BLACK);
+    spr.drawRoundRect(160, 221, 80, 19, 4, playerColor[currentPlayer]);
+  } else if (currentPlayer == 1) {
+    spr.drawRoundRect(160, 221, 80, 19, 4, TFT_BLACK);
+    spr.drawRoundRect(240, 221, 80, 19, 4, playerColor[currentPlayer]);
+  } else {
+    Serial.printf("Unextected!!\n");
+  }
+}
+
 void changePlayer() {
   if (currentPlayer == 0) {
     currentPlayer = 1;
@@ -98,6 +111,7 @@ void changePlayer() {
   } else {
     Serial.printf("Unextected!!\n");
   }
+  highlightCurrentPlayer();
 }
 
 bool isPlaced(int player, int xidx, int yidx) {
@@ -222,10 +236,10 @@ bool judgeDiagonal(int player, int xidx, int yidx) {
 void updateBottomInfo(int highlightedPlayer = -1) {
   spr.setTextSize(1);
   spr.fillRect(0, 221, 320, 19, TFT_BLACK);
-  spr.drawRoundRect( 2, 222, 36, 16, 2, TFT_WHITE);
-  spr.drawRoundRect(42, 222, 36, 16, 2, TFT_WHITE);
-  spr.setCursor( 5,227);spr.setTextColor(TFT_WHITE);spr.printf("Reset");
-  spr.setCursor(45,227);spr.setTextColor(TFT_WHITE);spr.printf("Start");
+  spr.fillRoundRect( 2, 222, 36, 16, 2, TFT_WHITE);
+  spr.fillRoundRect(42, 222, 36, 16, 2, TFT_WHITE);
+  spr.setCursor( 5,227);spr.setTextColor(TFT_BLACK);spr.printf("Reset");
+  spr.setCursor(45,227);spr.setTextColor(TFT_BLACK);spr.printf("Start");
   spr.setCursor(120,227);spr.setTextColor(TFT_WHITE);spr.printf("WINs->");
   spr.setCursor(160,227);spr.setTextColor(playerColor[0]);spr.printf(" Player1:%3d", winCount[0]);
   spr.setCursor(240,227);spr.setTextColor(playerColor[1]);spr.printf(" Player2:%3d", winCount[1]);
@@ -276,31 +290,7 @@ void winSound() {
   }
   theAudio->setBeep(0, 0, 0);
 }
-//===================================
-// setup
-//===================================
-void setup(void) {
-  Serial.begin(115200);
-  setupLGFX(DEPTH_16BIT, ROT90);
-  setupTouch(_w, _h, ROT90, false);
-  int rtn = 0;
-  uint32_t sz = _w * _h;
-  
-  theAudio = AudioClass::getInstance();
-  theAudio->begin();
-  puts("initialization Audio Library");
-  theAudio->setPlayerMode(AS_SETPLAYER_OUTPUTDEVICE_SPHP, 0, 0);
 
-  spr.setColorDepth(DEPTH_8BIT);
-  if (!spr.createSprite(_w, _h)) {
-    Serial.printf("ERROR: malloc error (tmpspr:%dByte)\n", sz);
-    rtn = -1;
-  }
-  winCount[0] = 0;
-  winCount[1] = 0;
-  gameInit();
-  finished = true;
-}
 
 int getTouchedInfoArea(int xidx, int yidx) {
   if (xidx >= 0 && xidx <= 1 && yidx == 11) {
@@ -332,6 +322,32 @@ void allReset() {
 }
 
 //===================================
+// setup
+//===================================
+void setup(void) {
+  Serial.begin(115200);
+  setupLGFX(DEPTH_16BIT, ROT90);
+  setupTouch(_w, _h, ROT90, false);
+  int rtn = 0;
+  uint32_t sz = _w * _h;
+  
+  theAudio = AudioClass::getInstance();
+  theAudio->begin();
+  puts("initialization Audio Library");
+  theAudio->setPlayerMode(AS_SETPLAYER_OUTPUTDEVICE_SPHP, 0, 0);
+
+  spr.setColorDepth(DEPTH_8BIT);
+  if (!spr.createSprite(_w, _h)) {
+    Serial.printf("ERROR: malloc error (tmpspr:%dByte)\n", sz);
+    rtn = -1;
+  }
+  winCount[0] = 0;
+  winCount[1] = 0;
+  gameInit();
+  finished = true;
+}
+
+//===================================
 // loop
 //===================================
 void loop(void) {
@@ -360,6 +376,7 @@ void loop(void) {
           gameInit();
           startSound();
           finished = false;
+          highlightCurrentPlayer();
         }
       } else {
         qx = quantizePos(tx);
@@ -381,8 +398,9 @@ void loop(void) {
             spr.pushSprite(&lcd, 0, 0);
             winSound();
             finished = true;
+          } else {
+            changePlayer();
           }
-          changePlayer();
         }
       }
     }
